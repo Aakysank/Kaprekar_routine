@@ -6,6 +6,8 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+
+#define _MAX_DIGITS 8
 using namespace std;
 
 int main()
@@ -22,10 +24,10 @@ int main()
 
 	char* error = NULL;
 	long long number = 0ll;
-	std::unordered_set<long long> kaprekarSequence;
-	char sRandomNumber[13] = "124581157762";
+	std::vector<long long> kaprekarSequence;
+	char sRandomNumber[_MAX_DIGITS + 1] = "43208766";
 	number = strtoll(sRandomNumber, &error, 10);
-	kaprekarSequence.insert(number);
+	kaprekarSequence.push_back(number);
 
 	while (1)
 	{
@@ -40,7 +42,7 @@ int main()
 		std::sort(ascendingArrangement.begin(), ascendingArrangement.end(), std::greater<int>());
 		std::sort(descendingArrangement.begin(), descendingArrangement.end(), std::less<int>());
 
-		char strAscendingNumber[13] = "", strdescendingNumber[13] = " ";
+		char strAscendingNumber[_MAX_DIGITS+1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
 		for (int i = 0; i < ascendingArrangement.size(); i++)
 		{
 			strAscendingNumber[i] = '0' + ascendingArrangement[i];
@@ -55,14 +57,14 @@ int main()
 
 		number = ascendingNumber - descendingNumber;
 
-		if (kaprekarSequence.find(number) != kaprekarSequence.end())
+		if (std::find(kaprekarSequence.begin(), kaprekarSequence.end(), number) != kaprekarSequence.end())
 			break;
 
 		std::string newNumber(to_string(number));
 		for (int i = 0; i < newNumber.size(); i++)
 			sRandomNumber[i] = newNumber[i];
 
-		kaprekarSequence.insert(number);
+		kaprekarSequence.push_back(number);
 	}
 
 	std::cout << "Kaprekar constant is " << number <<endl;
@@ -70,7 +72,8 @@ int main()
 
 	for (const auto& num : kaprekarSequence)
 		std::cout << num << "->";
-
+	
+	std::cout << number;
 	return 0;
 }
 
