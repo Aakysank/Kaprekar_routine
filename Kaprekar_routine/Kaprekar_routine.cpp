@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <string>
 #include <map>
+#include <thread>
+#include <mutex>
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -14,83 +16,93 @@
 	#include <unistd.h>
 #endif
 
-#define _MAX_DIGITS 8
+#define _MAX_DIGITS  50
 using namespace std;
 
 typedef long long LLONG;
-std::map<LLONG, std::vector<LLONG>> _kaprekar_routine_map;
 
-void getKaprekarRoutine(LLONG number, int nDigits)
+mutex map_lock;
+map<LLONG, std::vector<LLONG>> _kaprekar_routine_map;
+
+void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 {
-	char* error = NULL;
-	vector<LLONG> kaprekarSequence;
-	std::string strNum(to_string(number));
-	kaprekarSequence.push_back(number);
-
-	while (1)
+	for (LLONG number = start; number <= end; number++)
 	{
-		LLONG ascendingNumber = 0ll, descendingNumber = 0ll, newNumber = 0ll;;
-		std::vector<int> randomNumber, ascendingArrangement, descendingArrangement;
+		char* error = NULL;
+		vector<LLONG> kaprekarSequence;
+		std::string strNum(to_string(number));
+		kaprekarSequence.push_back(number);
 
-		if (strNum.size() < nDigits)
+		while (1)
 		{
-			int diff = nDigits - strNum.size();
-			for (int i = 0; i < diff; i++)
-				strNum.push_back('0');
+			LLONG ascendingNumber = 0ll, descendingNumber = 0ll, newNumber = 0ll;;
+			std::vector<int> randomNumber, ascendingArrangement, descendingArrangement;
+
+			if (strNum.size() < nDigits)
+			{
+				int diff = nDigits - strNum.size();
+				for (int i = 0; i < diff; i++)
+					strNum.insert(strNum.begin(), '0');
+			}
+
+			for (int i = 0; i < strNum.size(); i++)
+				randomNumber.push_back(strNum[i] - '0');
+
+			ascendingArrangement = randomNumber;
+			descendingArrangement = randomNumber;
+
+			sort(ascendingArrangement.begin(), ascendingArrangement.end(), greater<int>());
+			sort(descendingArrangement.begin(), descendingArrangement.end(), less<int>());
+
+			char strAscendingNumber[_MAX_DIGITS + 1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
+			for (int i = 0; i < ascendingArrangement.size(); i++)
+			{
+				strAscendingNumber[i] = '0' + ascendingArrangement[i];
+			}
+			for (int i = 0; i < descendingArrangement.size(); i++)
+			{
+				strdescendingNumber[i] = '0' + descendingArrangement[i];
+			}
+
+			ascendingNumber = strtoll(strAscendingNumber, &error, 10);
+			descendingNumber = strtoll(strdescendingNumber, &error, 10);
+
+			newNumber = ascendingNumber - descendingNumber;
+
+			if (std::find(kaprekarSequence.begin(), kaprekarSequence.end(), newNumber) != kaprekarSequence.end())
+				break;
+
+			strNum = to_string(newNumber);
+			kaprekarSequence.push_back(newNumber);
 		}
 
-		for (int i = 0; i < strNum.size(); i++)
-			randomNumber.push_back(strNum[i] - '0');
-
-		ascendingArrangement = randomNumber;
-		descendingArrangement = randomNumber;
-
-		std::sort(ascendingArrangement.begin(), ascendingArrangement.end(), std::greater<int>());
-		std::sort(descendingArrangement.begin(), descendingArrangement.end(), std::less<int>());
-
-		char strAscendingNumber[_MAX_DIGITS + 1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
-		for (int i = 0; i < ascendingArrangement.size(); i++)
-		{
-			strAscendingNumber[i] = '0' + ascendingArrangement[i];
-		}
-		for (int i = 0; i < descendingArrangement.size(); i++)
-		{
-			strdescendingNumber[i] = '0' + descendingArrangement[i];
-		}
-
-		ascendingNumber = strtoll(strAscendingNumber, &error, 10);
-		descendingNumber = strtoll(strdescendingNumber, &error, 10);
-
-		newNumber = ascendingNumber - descendingNumber;
-
-		if (std::find(kaprekarSequence.begin(), kaprekarSequence.end(), newNumber) != kaprekarSequence.end())
-			break;
-
-		strNum = to_string(newNumber);
-		kaprekarSequence.push_back(newNumber);
+		map_lock.lock();
+		_kaprekar_routine_map[number] = kaprekarSequence;
+		map_lock.unlock();
 	}
 
-	_kaprekar_routine_map[number] = kaprekarSequence;
 	return;
 }
+
 int main()
 {
 	char* error = NULL;
-	int nDigits = 0;
-	cout << "Enter the number of digits for determining kaprekar constants and kaprekar routine" << "\t";
+	int numDigits = 0, numThreads = 1;;
+	LLONG minNumber = 0ll, maxNumber = 0ll;
+	char* pMinNumber = NULL, * pMaxNumber = NULL;
+	vector<thread> threadList;
 
-	cin >> nDigits;
-	if (nDigits <= 0 || nDigits > 50)
+	cout << "Enter the number of digits for determining kaprekar constants and kaprekar routine" << "\t";
+	cin >> numDigits;
+
+	if (numDigits <= 0 || numDigits > 50)
 	{
 		std::cout << "Limit exceeded, Maximum number of digits allowed is 49" << std::endl;
 		return -1;
 	}
 
-	LLONG minNumber = 0ll, maxNumber = 0ll;
-	
-	char* pMinNumber = NULL, * pMaxNumber = NULL;
-	pMinNumber = (char*)calloc(sizeof(char), nDigits);
-	pMaxNumber = (char*)calloc(sizeof(char), nDigits);
+	pMinNumber = (char*)calloc(numDigits, sizeof(char));
+	pMaxNumber = (char*)calloc(numDigits, sizeof(char));
 
 	if (!pMinNumber || !pMaxNumber)
 	{
@@ -98,8 +110,8 @@ int main()
 		return -2;
 	}
 
-	memset(pMinNumber, '0', sizeof(char) * nDigits);
-	memset(pMaxNumber, '9', sizeof(char) * nDigits);
+	memset(pMinNumber, '0', sizeof(char) * numDigits);
+	memset(pMaxNumber, '9', sizeof(char) * numDigits);
 
 	pMinNumber[0] = '1';
 	
@@ -116,10 +128,25 @@ int main()
 		return -4;
 	}
 
-	
-	for (LLONG num = minNumber; num <= maxNumber; num++)
-		getKaprekarRoutine(num, nDigits);
+#ifdef _WIN32
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+	numThreads = sysinfo.dwNumberOfProcessors;
+#else
+	numThreads = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
 
+	LLONG range_per_thread = ((maxNumber - minNumber) + 1) / numThreads;
+	for (int i = 0; i < numThreads; i++)
+	{
+		LLONG start = minNumber + (i * range_per_thread);
+		LLONG end = start + range_per_thread - 1;
+		threadList.emplace_back(getKaprekarRoutine, start, end, numDigits);
+	}
+
+	for (auto& t : threadList)
+		t.join();
+	
 	if (_kaprekar_routine_map.size())
 	{
 		cout << "Kaprekar routine for numbers from " << minNumber << " to " << maxNumber << " is " << std::endl;
