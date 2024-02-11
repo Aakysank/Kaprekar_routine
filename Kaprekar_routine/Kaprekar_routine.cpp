@@ -6,35 +6,41 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <map>
+
+#ifdef _WIN32
+	#include <windows.h>
+#else
+	#include <unistd.h>
+#endif
 
 #define _MAX_DIGITS 8
 using namespace std;
 
-int main()
+typedef long long LLONG;
+std::map<LLONG, std::vector<LLONG>> _kaprekar_routine_map;
+
+void getKaprekarRoutine(LLONG number, int nDigits)
 {
-	/*int nDigits = 0;
-	cout << "Enter the number of digits for determining kaprekar constants and kaprekar routine" << "\t";
-
-	cin >> nDigits;
-	if (nDigits <= 0 || nDigits > 13)
-	{
-		std::cout << "Limit exceeded, Maximum number of digits allowed is 12" << std::endl;
-		return -1;
-	}*/
-
 	char* error = NULL;
-	long long number = 0ll;
-	std::vector<long long> kaprekarSequence;
-	char sRandomNumber[_MAX_DIGITS + 1] = "43208766";
-	number = strtoll(sRandomNumber, &error, 10);
+	vector<LLONG> kaprekarSequence;
+	std::string strNum(to_string(number));
 	kaprekarSequence.push_back(number);
 
 	while (1)
 	{
-		long long ascendingNumber = 0ll, descendingNumber = 0ll;
+		LLONG ascendingNumber = 0ll, descendingNumber = 0ll, newNumber = 0ll;;
 		std::vector<int> randomNumber, ascendingArrangement, descendingArrangement;
-		for (int i = 0; i < strlen(sRandomNumber); i++)
-			randomNumber.push_back(sRandomNumber[i] - '0');
+
+		if (strNum.size() < nDigits)
+		{
+			int diff = nDigits - strNum.size();
+			for (int i = 0; i < diff; i++)
+				strNum.push_back('0');
+		}
+
+		for (int i = 0; i < strNum.size(); i++)
+			randomNumber.push_back(strNum[i] - '0');
 
 		ascendingArrangement = randomNumber;
 		descendingArrangement = randomNumber;
@@ -42,7 +48,7 @@ int main()
 		std::sort(ascendingArrangement.begin(), ascendingArrangement.end(), std::greater<int>());
 		std::sort(descendingArrangement.begin(), descendingArrangement.end(), std::less<int>());
 
-		char strAscendingNumber[_MAX_DIGITS+1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
+		char strAscendingNumber[_MAX_DIGITS + 1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
 		for (int i = 0; i < ascendingArrangement.size(); i++)
 		{
 			strAscendingNumber[i] = '0' + ascendingArrangement[i];
@@ -55,25 +61,90 @@ int main()
 		ascendingNumber = strtoll(strAscendingNumber, &error, 10);
 		descendingNumber = strtoll(strdescendingNumber, &error, 10);
 
-		number = ascendingNumber - descendingNumber;
+		newNumber = ascendingNumber - descendingNumber;
 
-		if (std::find(kaprekarSequence.begin(), kaprekarSequence.end(), number) != kaprekarSequence.end())
+		if (std::find(kaprekarSequence.begin(), kaprekarSequence.end(), newNumber) != kaprekarSequence.end())
 			break;
 
-		std::string newNumber(to_string(number));
-		for (int i = 0; i < newNumber.size(); i++)
-			sRandomNumber[i] = newNumber[i];
-
-		kaprekarSequence.push_back(number);
+		strNum = to_string(newNumber);
+		kaprekarSequence.push_back(newNumber);
 	}
 
-	std::cout << "Kaprekar constant is " << number <<endl;
-	std::cout << "Kaprekar sequence is" << endl;
+	_kaprekar_routine_map[number] = kaprekarSequence;
+	return;
+}
+int main()
+{
+	char* error = NULL;
+	int nDigits = 0;
+	cout << "Enter the number of digits for determining kaprekar constants and kaprekar routine" << "\t";
 
-	for (const auto& num : kaprekarSequence)
-		std::cout << num << "->";
+	cin >> nDigits;
+	if (nDigits <= 0 || nDigits > 50)
+	{
+		std::cout << "Limit exceeded, Maximum number of digits allowed is 49" << std::endl;
+		return -1;
+	}
+
+	LLONG minNumber = 0ll, maxNumber = 0ll;
 	
-	std::cout << number;
+	char* pMinNumber = NULL, * pMaxNumber = NULL;
+	pMinNumber = (char*)calloc(sizeof(char), nDigits);
+	pMaxNumber = (char*)calloc(sizeof(char), nDigits);
+
+	if (!pMinNumber || !pMaxNumber)
+	{
+		std::cout << "Unable to allocate memory to fix the limit numbers for specified digits." << std::endl;
+		return -2;
+	}
+
+	memset(pMinNumber, '0', sizeof(char) * nDigits);
+	memset(pMaxNumber, '9', sizeof(char) * nDigits);
+
+	pMinNumber[0] = '1';
+	
+	minNumber = strtoll(pMinNumber, &error, 10);
+	if (error == pMinNumber)
+	{
+		std::cout << "Unable to convert minimum number to llong" << std::endl;
+		return -3;
+	}
+	maxNumber = strtoll(pMaxNumber, &error, 10);
+	if (error == pMaxNumber)
+	{
+		std::cout << "Unable to convert maximum number to llong" << std::endl;
+		return -4;
+	}
+
+	
+	for (LLONG num = minNumber; num <= maxNumber; num++)
+		getKaprekarRoutine(num, nDigits);
+
+	if (_kaprekar_routine_map.size())
+	{
+		cout << "Kaprekar routine for numbers from " << minNumber << " to " << maxNumber << " is " << std::endl;
+		for (auto it = _kaprekar_routine_map.begin(); it != _kaprekar_routine_map.end(); it++)
+		{
+			cout << it->first << " : ";
+			for (auto data = it->second.begin(); data != it->second.end(); ++data)
+				cout << *data << "->";
+			
+			cout << "\n";
+		}
+
+		cout << "Non trivial kaprekar constants from " << minNumber << " to " << maxNumber << " is " << std::endl;
+		for (auto it = _kaprekar_routine_map.begin(); it != _kaprekar_routine_map.end(); it++)
+		{
+			if (it->second.size() != 1)
+				continue;
+
+			cout << it->first;
+			cout << "\n";
+		}
+	}
+
+	free(pMinNumber);
+	free(pMaxNumber);
 	return 0;
 }
 
