@@ -16,7 +16,6 @@
 	#include <unistd.h>
 #endif
 
-#define _MAX_DIGITS  50
 using namespace std;
 
 typedef long long LLONG;
@@ -36,7 +35,9 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 		while (1)
 		{
 			LLONG ascendingNumber = 0ll, descendingNumber = 0ll, newNumber = 0ll;;
-			std::vector<int> randomNumber, ascendingArrangement, descendingArrangement;
+
+			std::string ascendingArrangement, descendingArrangement;
+			//std::vector<int> randomNumber, ascendingArrangement, descendingArrangement;
 
 			if (strNum.size() < nDigits)
 			{
@@ -45,27 +46,20 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 					strNum.insert(strNum.begin(), '0');
 			}
 
-			for (int i = 0; i < strNum.size(); i++)
-				randomNumber.push_back(strNum[i] - '0');
+			ascendingArrangement = strNum;
+			descendingArrangement = strNum;
 
-			ascendingArrangement = randomNumber;
-			descendingArrangement = randomNumber;
+			sort(ascendingArrangement.begin(), ascendingArrangement.end(), greater<char>());
+			sort(descendingArrangement.begin(), descendingArrangement.end(), less<char>());
 
-			sort(ascendingArrangement.begin(), ascendingArrangement.end(), greater<int>());
-			sort(descendingArrangement.begin(), descendingArrangement.end(), less<int>());
+			ascendingNumber = strtoll(ascendingArrangement.c_str(), &error, 10);
 
-			char strAscendingNumber[_MAX_DIGITS + 1] = "", strdescendingNumber[_MAX_DIGITS + 1] = " ";
-			for (int i = 0; i < ascendingArrangement.size(); i++)
-			{
-				strAscendingNumber[i] = '0' + ascendingArrangement[i];
-			}
-			for (int i = 0; i < descendingArrangement.size(); i++)
-			{
-				strdescendingNumber[i] = '0' + descendingArrangement[i];
-			}
+			if (error == ascendingArrangement.c_str())
+				continue;
 
-			ascendingNumber = strtoll(strAscendingNumber, &error, 10);
-			descendingNumber = strtoll(strdescendingNumber, &error, 10);
+			descendingNumber = strtoll(descendingArrangement.c_str(), &error, 10);
+			if (error == descendingArrangement.c_str())
+				continue;
 
 			newNumber = ascendingNumber - descendingNumber;
 
@@ -77,7 +71,8 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 		}
 
 		map_lock.lock();
-		_kaprekar_routine_map[number] = kaprekarSequence;
+		if (kaprekarSequence.size() == 1)
+			_kaprekar_routine_map[number] = kaprekarSequence;
 		map_lock.unlock();
 	}
 
@@ -149,7 +144,7 @@ int main()
 	
 	if (_kaprekar_routine_map.size())
 	{
-		cout << "Kaprekar routine for numbers from " << minNumber << " to " << maxNumber << " is " << std::endl;
+		/*cout << "Kaprekar routine for numbers from " << minNumber << " to " << maxNumber << " is " << std::endl;
 		for (auto it = _kaprekar_routine_map.begin(); it != _kaprekar_routine_map.end(); it++)
 		{
 			cout << it->first << " : ";
@@ -157,7 +152,7 @@ int main()
 				cout << *data << "->";
 			
 			cout << "\n";
-		}
+		}*/
 
 		cout << "Non trivial kaprekar constants from " << minNumber << " to " << maxNumber << " is " << std::endl;
 		for (auto it = _kaprekar_routine_map.begin(); it != _kaprekar_routine_map.end(); it++)
