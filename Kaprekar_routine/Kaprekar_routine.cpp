@@ -30,6 +30,9 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 		char* error = NULL;
 		vector<LLONG> kaprekarSequence;
 		std::string strNum(to_string(number));
+		
+		//Assume for now max number of items in cycle will be 100,if it exceeds new section of memory will be allocated by vector
+		kaprekarSequence.reserve(100);
 		kaprekarSequence.push_back(number);
 
 		while (1)
@@ -70,6 +73,9 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 			kaprekarSequence.push_back(newNumber);
 		}
 
+		//map is the common resource for all the threads
+		//all the other variables are local variables
+		//to avoid race condition on this variable,  we need to use mutex to safeguard common resources from the threads.
 		map_lock.lock();
 		if (kaprekarSequence.size() == 1)
 			_kaprekar_routine_map[number] = kaprekarSequence;
@@ -82,7 +88,7 @@ void getKaprekarRoutine(LLONG start, LLONG end, int nDigits)
 int main()
 {
 	char* error = NULL;
-	int numDigits = 0, numThreads = 1;;
+	int numDigits = 0, numThreads = 1;
 	LLONG minNumber = 0ll, maxNumber = 0ll;
 	char* pMinNumber = NULL, * pMaxNumber = NULL;
 	vector<thread> threadList;
@@ -126,10 +132,15 @@ int main()
 #ifdef _WIN32
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
-	numThreads = sysinfo.dwNumberOfProcessors;
+	//Dont overload full threads, keep one thread free
+	numThreads = sysinfo.dwNumberOfProcessors - 1;
 #else
-	numThreads = sysconf(_SC_NPROCESSORS_ONLN);
+	//Dont overload full threads, keep one thread free
+	numThreads = sysconf(_SC_NPROCESSORS_ONLN) - 1;
 #endif
+
+	if (numThreads == 0)
+		numThreads = 1;
 
 	LLONG range_per_thread = ((maxNumber - minNumber) + 1) / numThreads;
 	for (int i = 0; i < numThreads; i++)
